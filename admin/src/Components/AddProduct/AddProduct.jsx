@@ -51,17 +51,29 @@ const AddProduct = () => {
             if (responseData.success) {
                 product.image = responseData.image_url;
                 console.log(product);
-                await fetch('http://localhost:4000/addproduct' , {
+                await fetch('http://localhost:4000/addproduct', {
                     method: 'POST',
-                    headers : {
+                    headers: {
                         Accept: 'application/json',
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify(product)
-
                 }).then((res) => res.json()).then((data) => {
-                    data.success? alert("Product Added") : alert("Failed to add product");
-                })
+                    if (data.success) {
+                        alert("Product Added");
+                        // Reset the form fields
+                        setProductDetails({
+                            name: '',
+                            image: '',
+                            category: 'women',
+                            old_price: '',
+                            new_price: ''
+                        });
+                        setImage(null); // Clear the image preview
+                    } else {
+                        alert("Failed to add product");
+                    }
+                });
             } else {
                 console.error('Upload failed:', responseData);
             }

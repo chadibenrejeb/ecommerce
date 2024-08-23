@@ -9,19 +9,22 @@ const ListProduct = () => {
         try {
             const response = await fetch('http://localhost:4000/allproducts');
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-            const data = await response.json();
-            console.log('Fetched data:', data);
-            if (Array.isArray(data)) {
-                setAllProducts(data);
+
+            const responseData = await response.json();
+            console.log('Fetched data:', responseData);
+
+            // Check if the response contains a `data` field and it's an array
+            if (responseData.success && Array.isArray(responseData.data)) {
+                setAllProducts(responseData.data);
             } else {
-                console.error('Expected an array but got:', data);
-                setAllProducts([]);
+                console.error('Expected an array but got:', responseData);
+                setAllProducts([]); // Set to empty array if data is not valid
             }
         } catch (error) {
             console.error('Failed to fetch products:', error);
-            setAllProducts([]);
+            setAllProducts([]); // Set to empty array in case of error
         }
     };
 
