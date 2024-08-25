@@ -6,83 +6,89 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require("path");
 const cors = require('cors');
-
+const fs = require('fs');
+const bcrypt = require('bcrypt');
 
 app.use(express.json());
 app.use(cors());
 
-//database connection with mongoose
-mongoose.connect("mongodb+srv://rejebchadi:chadi123@ecommerce.uumtv.mongodb.net/?retryWrites=true&w=majority&appName=Ecommerce")
+// Ensure the upload directory exists
+const uploadDir = './upload/images';
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Database connection with mongoose
+mongoose.connect("mongodb+srv://rejebchadi:chadi123@ecommerce.uumtv.mongodb.net/?retryWrites=true&w=majority&appName=Ecommerce");
 
 // API Creation
-app.get("/", (req , res) => {
+app.get("/", (req, res) => {
     res.send("Express app is running");
-})
+});
 
 // Image Storage Engine
 const storage = multer.diskStorage({
-    destination : './upload/images',
-    filename : (req , file , cb) => {
-        return cb(null , `${file.fieldname}_${Date.now()}${path.extname(file.originalname)}`);
+    destination: uploadDir,
+    filename: (req, file, cb) => {
+        cb(null, `${file.fieldname}_${Date.now()}${path.extname(file.originalname)}`);
     }
-})
+});
 
-
-const upload = multer({storage: storage})
+const upload = multer({ storage: storage });
 
 // Creating Upload Endpoints for images
-app.use('/images' , express.static('upload/images'))
+app.use('/images', express.static(uploadDir));
 
-app.post("/upload" , upload.single("product") , (req , res) => {
+app.post("/upload", upload.single("product"), (req, res) => {
     res.json({
-        success:1,
-        image_url:`http://localhost:${port}/images/${req.file.filename}`
-    })
-})
+        success: 1,
+        image_url: `http://localhost:${port}/images/${req.file.filename}`
+    });
+});
 
 // Schema for Creating products
-const Product = mongoose.model("Product" , {
-    id:{
-        type:Number,
-        required:true
+const Product = mongoose.model("Product", {
+    id: {
+        type: Number,
+        required: true
     },
-    name:{
-        type:String,
-        required:true
+    name: {
+        type: String,
+        required: true
     },
-    image:{
-        type:String,
-        required:true
+    image: {
+        type: String,
+        required: true
     },
-    category:{
-        type:String,
-        required:true
+    category: {
+        type: String,
+        required: true
     },
-    new_price:{
-        type:Number ,
-        required:true
+    new_price: {
+        type: Number,
+        required: true
     },
-    old_price:{
-        type:Number,
-        required:true
+    old_price: {
+        type: Number,
+        required: true
     },
-    date:{
-        type:Date,
-        default:Date.now
+    date: {
+        type: Date,
+        default: Date.now
     },
-    available:{
-        type:Boolean,
-        default:true
+    available: {
+        type: Boolean,
+        default: true
     }
-})
+});
 
+// Adding a product
 app.post("/addproduct", async (req, res) => {
     try {
         let products = await Product.find({});
         let id;
         if (products.length > 0) {
-            let last_product_array = products.slice(-1);
-            let last_product = last_product_array[0];
+            let last_product = products[products.length - 1];
             id = last_product.id + 1;
         } else {
             id = 1;
@@ -95,49 +101,42 @@ app.post("/addproduct", async (req, res) => {
             new_price: req.body.new_price,
             old_price: req.body.old_price,
         });
-        console.log(product);
         await product.save();
-        console.log("The product has been added");
-
         res.status(201).json({
             success: true,
             name: req.body.name,
         });
-
     } catch (err) {
         console.error("Error adding product:", err);
         res.status(500).json({ success: false, message: "Error adding product" });
     }
 });
 
-//Creating API for deleting products
-app.post('/removeproduct' , async (req , res) => {
-    try{
+// Removing a product
+app.post('/removeproduct', async (req, res) => {
+    try {
         await Product.findOneAndDelete({
-            id:req.body.id,
+            id: req.body.id,
         });
-        console.log("removed")
-        res.status(201).json({
-            success: true,
-            name: req.body.name,
-        })
-    }catch(err){
-        console.error("Error adding product:", err);
-        res.status(500).json({ success: false, message: "Error removing product" });
-    }
-})
-
-// Creating API for getting all products
-app.get("/allproducts", async (req,res) => {
-    try{
-        let products = await Product.find({});
-
         res.status(200).json({
             success: true,
-            data : products
+            id: req.body.id,
         });
     } catch (err) {
+        console.error("Error removing product:", err);
+        res.status(500).json({ success: false, message: "Error removing product" });
+    }
+});
 
+// Getting all products
+app.get("/allproducts", async (req, res) => {
+    try {
+        let products = await Product.find({});
+        res.status(200).json({
+            success: true,
+            data: products
+        });
+    } catch (err) {
         console.error("Error fetching products:", err);
         res.status(500).json({
             success: false,
@@ -146,99 +145,139 @@ app.get("/allproducts", async (req,res) => {
     }
 });
 
-// SCHEMA CREATION FOR USER MODEL
-const Users = mongoose.model("Users" , {
-    name : {
+// Schema creation for User model
+const Users = mongoose.model("Users", {
+    name: {
         type: String,
         required: true,
     },
-    email : {
+    email: {
         type: String,
-        unique:true ,
+        unique: true,
         required: true,
     },
-    password : {
+    password: {
         type: String,
-        required:true
+        required: true
     },
-    cardData : {
+    cardData: {
         type: Object,
     },
-    date : {
+    date: {
         type: Date,
-        default : Date.now
+        default: Date.now
     }
 });
 
-//Creatin endpoint for registering the user
-app.post('/signup' , async (req , res) => {
-    let check = await Users.findOne({email :req.body.email});
-    if(check){
-        return res.status(400).json({
-            success : false,
-            errors : "User already exists"
-        })
-    }
-    let cart = {};
-    for(let i=0 ; i < 300 ; i++ ){
-        cart[i] = 0 ;
-    }
-    const user = new Users({
-        name : req.body.name ,
-        email : req.body.email ,
-        password : req.body.password,
-        cartData : cart,
-    })
-
-    await user.save();
-
-    const data = {
-        user:{
-            id:user.id
-        }
-    }
-
-    const token = jwt.sign(data , 'secret_ecom');
-    res.json({success:true , token})
-})
-
-// creatind endpoint for user login
-app.post('/login' , async (req , res) => {
-    let user = await Users.findOne({email :req.body.email});
-    if(user){
-        const passCompare = req.body.password === user.password ;
-        if(passCompare){
-            const data = {
-                user:{
-                    id: user.id
-                }
-            }
-            const token = jwt.sign(data , 'secret_ecom');
-            res.json({
-                success : true ,
-                token
-            })
-        }else{
-            res.json({
-                success : false,
-                errors:"Password is incorrect"
+// Registering a new user
+app.post('/signup', async (req, res) => {
+    try {
+        let check = await Users.findOne({ email: req.body.email });
+        if (check) {
+            return res.status(400).json({
+                success: false,
+                errors: "User already exists"
             });
         }
-    }else{
-        res.json({
-            success : false,
-            errors : "Wrong email"
-        })
+
+        let cart = {};
+        for (let i = 0; i < 300; i++) {
+            cart[i] = 0;
+        }
+
+        const hashedPassword = await bcrypt.hash(req.body.password, 10);
+
+        const user = new Users({
+            name: req.body.name,
+            email: req.body.email,
+            password: hashedPassword,
+            cardData: cart,
+        });
+
+        await user.save();
+
+        const data = {
+            user: {
+                id: user.id
+            }
+        };
+
+        const token = jwt.sign(data, 'secret_ecom');
+        res.json({ success: true, token });
+    } catch (err) {
+        console.error("Error signing up:", err);
+        res.status(500).json({ success: false, message: "Error signing up" });
     }
+});
 
-})
-
-
-app.listen(port , (err) => {
-    if(!err){
-        console.log("server running on port: " + port);
-    }else {
-        throw err;
-        console.log("Error on port: " + err);
+// Logging in a user
+app.post('/login', async (req, res) => {
+    try {
+        let user = await Users.findOne({ email: req.body.email });
+        if (user) {
+            const passCompare = await bcrypt.compare(req.body.password, user.password);
+            if (passCompare) {
+                const data = {
+                    user: {
+                        id: user.id
+                    }
+                };
+                const token = jwt.sign(data, 'secret_ecom');
+                res.json({
+                    success: true,
+                    token
+                });
+            } else {
+                res.status(400).json({
+                    success: false,
+                    errors: "Password is incorrect"
+                });
+            }
+        } else {
+            res.status(400).json({
+                success: false,
+                errors: "Wrong email"
+            });
+        }
+    } catch (err) {
+        console.error("Error logging in:", err);
+        res.status(500).json({ success: false, message: "Error logging in" });
     }
-})
+});
+
+// Getting new collections
+app.get('/newcollections', async (req, res) => {
+    try {
+        let products = await Product.find({});
+        let newcollection = products.slice(1).slice(-8);
+        res.send(newcollection);
+    } catch (err) {
+        console.error("Error fetching new collections:", err);
+        res.status(500).json({ success: false, message: "Error fetching new collections" });
+    }
+});
+
+// Getting popular products in the women section
+app.get('/popularwomen', async (req, res) => {
+    try {
+        let products = await Product.find({ category: "women" });
+        let popular_woman = products.slice(0, 4);
+        res.send(popular_woman);
+    } catch (err) {
+        console.error("Error fetching popular women products:", err);
+        res.status(500).json({ success: false, message: "Error fetching popular women products" });
+    }
+});
+
+// Add to cart (implement this according to your requirements)
+app.post('/addtocart', async (req, res) => {
+    // Implementation needed
+});
+
+app.listen(port, (err) => {
+    if (!err) {
+        console.log("Server running on port: " + port);
+    } else {
+        console.error("Error on port: " + err);
+    }
+});
