@@ -27,6 +27,7 @@ const storage = multer.diskStorage({
     }
 })
 
+
 const upload = multer({storage: storage})
 
 // Creating Upload Endpoints for images
@@ -144,6 +145,63 @@ app.get("/allproducts", async (req,res) => {
         });
     }
 });
+
+// SCHEMA CREATION FOR USER MODEL
+const User = mongoose.model("Users" , {
+    name : {
+        type: String,
+        required: true,
+    },
+    email : {
+        type: String,
+        unique:true ,
+        required: true,
+    },
+    password : {
+        type: String,
+        required:true
+    },
+    cardData : {
+        type: Object,
+    },
+    date : {
+        type: Date,
+        default : Date.now
+    }
+});
+
+//Creatin endpoint for registering the user
+app.post('/signup' , async (req , res) => {
+    let check = await User.findOne({email :req.body.email});
+    if(check){
+        return res.status(400).json({
+            success : false,
+            errors : "User already exists"
+        })
+    }
+    let cart = {};
+    for(let i=0 ; i < 300 ; i++ ){
+        cart[i] = 0 ;
+    }
+    const user = new User({
+        name : req.body.name ,
+        email : req.body.email ,
+        password : req.body.password,
+        cartData : cart,
+    })
+
+    await user.save();
+
+    const data = {
+        user:{
+            id:user.id
+        }
+    }
+
+    const token = jwt.sign(data , 'secret_ecom');
+    res.json({success:true , token})
+})
+
 
 app.listen(port , (err) => {
     if(!err){
