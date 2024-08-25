@@ -24,7 +24,7 @@ const ListProduct = () => {
             }
         } catch (error) {
             console.error('Failed to fetch products:', error);
-            setAllProducts([]); // Set to empty array in case of error
+            setAllProducts([]);
         }
     };
 
