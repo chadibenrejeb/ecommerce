@@ -19,7 +19,11 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 // Database connection with mongoose
-mongoose.connect("mongodb+srv://rejebchadi:chadi123@ecommerce.uumtv.mongodb.net/?retryWrites=true&w=majority&appName=Ecommerce");
+// Database connection with mongoose
+mongoose.connect("mongodb+srv://rejebchadi:chadi123@ecommerce.uumtv.mongodb.net/?retryWrites=true&w=majority&appName=Ecommerce", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+});
 
 // API Creation
 app.get("/", (req, res) => {
@@ -86,13 +90,8 @@ const Product = mongoose.model("Product", {
 app.post("/addproduct", async (req, res) => {
     try {
         let products = await Product.find({});
-        let id;
-        if (products.length > 0) {
-            let last_product = products[products.length - 1];
-            id = last_product.id + 1;
-        } else {
-            id = 1;
-        }
+        let id = products.length > 0 ? products[products.length - 1].id + 1 : 1;
+
         const product = new Product({
             id: id,
             name: req.body.name,
@@ -101,6 +100,7 @@ app.post("/addproduct", async (req, res) => {
             new_price: req.body.new_price,
             old_price: req.body.old_price,
         });
+
         await product.save();
         res.status(201).json({
             success: true,
@@ -160,8 +160,9 @@ const Users = mongoose.model("Users", {
         type: String,
         required: true
     },
-    cardData: {
-        type: Object,
+    cartData: {
+        type: Map,
+        of: Number,
     },
     date: {
         type: Date,
@@ -180,25 +181,20 @@ app.post('/signup', async (req, res) => {
             });
         }
 
-        let cart = {};
-        for (let i = 0; i < 300; i++) {
-            cart[i] = 0;
-        }
-
         const hashedPassword = await bcrypt.hash(req.body.password, 10);
 
         const user = new Users({
             name: req.body.name,
             email: req.body.email,
             password: hashedPassword,
-            cardData: cart,
+            cartData: {}, // Initialize an empty cart
         });
 
         await user.save();
 
         const data = {
             user: {
-                id: user.id
+                id: user._id
             }
         };
 
@@ -219,7 +215,7 @@ app.post('/login', async (req, res) => {
             if (passCompare) {
                 const data = {
                     user: {
-                        id: user.id
+                        id: user._id
                     }
                 };
                 const token = jwt.sign(data, 'secret_ecom');
@@ -269,15 +265,51 @@ app.get('/popularwomen', async (req, res) => {
     }
 });
 
+// Middleware to fetch user
+const fetchUser = async (req, res, next) => {
+    const token = req.header('auth-token');
+    if (!token) {
+        return res.status(401).send({ errors: "Please Log in" });
+    } else {
+        try {
+            const data = jwt.verify(token, 'secret_ecom');
+            req.user = data.user;
+            next(); // Proceed to the next middleware or route handler
+        } catch (error) {
+            return res.status(401).send({ errors: "Please authenticate using a valid token" });
+        }
+    }
+}
+
 // Add to cart (implement this according to your requirements)
-app.post('/addtocart', async (req, res) => {
-    // Implementation needed
+app.post('/addtocart', fetchUser, async (req, res) => {
+    try {
+        let userData = await Users.findById(req.user.id);
+
+        if (!userData) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        // Initialize itemId if it doesn't exist in cartData
+        if (!userData.cartData.has(req.body.itemId)) {
+            userData.cartData.set(req.body.itemId, 0);
+        }
+
+        userData.cartData.set(req.body.itemId, userData.cartData.get(req.body.itemId) + 1);
+
+        await userData.save();
+
+        res.status(200).json({ success: true, message: "Item added to cart" });
+    } catch (err) {
+        console.error("Error adding item to cart:", err);
+        res.status(500).json({ success: false, message: "Error adding item to cart" });
+    }
 });
 
 app.listen(port, (err) => {
     if (!err) {
         console.log("Server running on port: " + port);
     } else {
-        console.error("Error on port: " + err);
+        console.error("Error on port:", err);
     }
 });
