@@ -18,12 +18,11 @@ if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Database connection with mongoose
-// Database connection with mongoose
 mongoose.connect("mongodb+srv://rejebchadi:chadi123@ecommerce.uumtv.mongodb.net/?retryWrites=true&w=majority&appName=Ecommerce", {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-});
+}).then(() => console.log('Connected to MongoDB'))
+    .catch(err => console.error('Error connecting to MongoDB:', err));
 
 // API Creation
 app.get("/", (req, res) => {
@@ -163,6 +162,8 @@ const Users = mongoose.model("Users", {
     cartData: {
         type: Map,
         of: Number,
+        default: new Map(),
+
     },
     date: {
         type: Date,
@@ -290,12 +291,15 @@ app.post('/addtocart', fetchUser, async (req, res) => {
             return res.status(404).json({ success: false, message: "User not found" });
         }
 
+        // Convert the itemId to a string before using it as a key
+        const itemId = String(req.body.itemId);
+
         // Initialize itemId if it doesn't exist in cartData
-        if (!userData.cartData.has(req.body.itemId)) {
-            userData.cartData.set(req.body.itemId, 0);
+        if (!userData.cartData.has(itemId)) {
+            userData.cartData.set(itemId, 0);
         }
 
-        userData.cartData.set(req.body.itemId, userData.cartData.get(req.body.itemId) + 1);
+        userData.cartData.set(itemId, userData.cartData.get(itemId) + 1);
 
         await userData.save();
 
