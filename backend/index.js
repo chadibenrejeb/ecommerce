@@ -285,6 +285,8 @@ const fetchUser = async (req, res, next) => {
 // Add to cart (implement this according to your requirements)
 app.post('/addtocart', fetchUser, async (req, res) => {
     try {
+        console.log("Added " , req.body.itemId);
+
         let userData = await Users.findById(req.user.id);
 
         if (!userData) {
@@ -307,6 +309,45 @@ app.post('/addtocart', fetchUser, async (req, res) => {
     } catch (err) {
         console.error("Error adding item to cart:", err);
         res.status(500).json({ success: false, message: "Error adding item to cart" });
+    }
+});
+
+//creatin endpoint to remove item from cartdata
+app.post('/removefromcart', fetchUser, async (req, res) => {
+    try {
+        console.log("removed", req.body.itemId);
+
+        // Find the user by ID
+        let userData = await Users.findById(req.user.id);
+
+        if (!userData) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        const itemId = String(req.body.itemId);
+
+        // Check if the item exists in the cart
+        if (userData.cartData.has(itemId)) {
+            const currentQuantity = userData.cartData.get(itemId);
+
+            if (currentQuantity > 1) {
+                // Decrement the quantity if it's greater than 1
+                userData.cartData.set(itemId, currentQuantity - 1);
+            } else {
+                // Remove the item from the cart if the quantity is 1 or less
+                userData.cartData.delete(itemId);
+            }
+
+            // Save the updated cartData back to the database
+            await userData.save();
+
+            res.status(200).json({ success: true, message: "Item removed from cart" });
+        } else {
+            res.status(400).json({ success: false, message: "Item not found in cart" });
+        }
+    } catch (err) {
+        console.error("Error removing item from cart:", err);
+        res.status(500).json({ success: false, message: "Error removing item from cart" });
     }
 });
 
