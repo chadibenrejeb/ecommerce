@@ -354,7 +354,7 @@ app.post('/removefromcart', fetchUser, async (req, res) => {
 //creating endpoint to get cart data
 app.post('/getcart', fetchUser, async (req, res) => {
     try {
-        console.log('Get Cart');
+        console.log('Get Cart Items');
         let userData = await Users.findOne({ _id: req.user.id });
         if (!userData) {
             return res.status(404).json({ message: "User not found" });
