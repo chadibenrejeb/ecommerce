@@ -351,6 +351,21 @@ app.post('/removefromcart', fetchUser, async (req, res) => {
     }
 });
 
+//creating endpoint to get cart data
+app.post('/getcart', fetchUser, async (req, res) => {
+    try {
+        console.log('Get Cart');
+        let userData = await Users.findOne({ _id: req.user.id });
+        if (!userData) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        res.json({ cartData: userData.cartData }); // Ensure the structure matches what your frontend expects
+    } catch (error) {
+        console.error("Error fetching cart data:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
 app.listen(port, (err) => {
     if (!err) {
         console.log("Server running on port: " + port);
