@@ -122,7 +122,7 @@ app.post('/removeproduct', async (req, res) => {
             id: req.body.id,
         });
     } catch (err) {
-        console.error("Error removing product:", err);
+        console.error("Error with removing the product:", err);
         res.status(500).json({ success: false, message: "Error removing product" });
     }
 });
